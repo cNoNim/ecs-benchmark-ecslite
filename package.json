@@ -1,0 +1,11 @@
+{
+  "name": "ecs.benchmark.ecslite",
+  "author": "Oleg 'cNoNim' Ageev",
+  "displayName": "ECS Benchmark EcsLite",
+  "version": "1.0.0",
+  "description": "ECS Benchmark EcsLite",
+  "dependencies": {
+    "ecs.benchmark.core": "1.0.0",
+    "com.leopotam.ecslite": "2024.5.22"
+  }
+}
