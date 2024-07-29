@@ -9,30 +9,70 @@ using Leopotam.EcsLite;
 namespace Benchmark.EcsLite
 {
 
-public static class EcsFilterExtensions
-{
-	public static bool HasEntity(this EcsFilter filter, int entity)
-	{
-		var sparseIndex = filter.GetSparseIndex();
-		return entity >= 0 && entity < sparseIndex.Length && sparseIndex[entity] != 0;
-	}
-}
-
 public class ContextEcsLite : ContextBase
 {
+	private EcsSystems? _ecsSystems;
+	private EcsWorld?   _world;
+
+	public ContextEcsLite()
+		: base("EcsLite") {}
+
+	protected override void DoSetup()
+	{
+		var world = _world = new EcsWorld();
+		_ecsSystems = new EcsSystems(world);
+		_ecsSystems.Add(new SpawnSystem(world));
+		_ecsSystems.Add(new RespawnSystem(world));
+		_ecsSystems.Add(new KillSystem(world));
+		_ecsSystems.Add(new RenderSystem(world, Framebuffer));
+		_ecsSystems.Add(new SpriteSystem(world));
+		_ecsSystems.Add(new DamageSystem(world));
+		_ecsSystems.Add(new AttackSystem(world));
+		_ecsSystems.Add(new MovementSystem(world));
+		_ecsSystems.Add(new UpdateVelocitySystem(world));
+		_ecsSystems.Add(new UpdateDataSystem(world));
+		_ecsSystems.Init();
+
+		var spawnPool = world.GetPool<Spawn>();
+		var dataPool  = world.GetPool<Data>();
+		var unitPool  = world.GetPool<Unit>();
+		for (var i = 0; i < EntityCount; ++i)
+		{
+			var entity = world.NewEntity();
+			spawnPool.Add(entity);
+			dataPool.Add(entity);
+			unitPool.Add(entity) = new Unit
+			{
+				Id   = (uint) i,
+				Seed = (uint) i,
+			};
+		}
+	}
+
+	protected override void DoRun(int tick) =>
+		_ecsSystems?.Run();
+
+	protected override void DoCleanup()
+	{
+		_ecsSystems?.Destroy();
+		_ecsSystems = null;
+		_world?.Destroy();
+		_world = null;
+	}
+
 	private class SpawnSystem : IEcsRunSystem
 	{
-		private readonly EcsFilter             _filter;
-		private readonly EcsPool<Unit>         _unitPool;
+		private readonly EcsPool<Damage>       _damagePool;
 		private readonly EcsPool<Data>         _dataPool;
-		private readonly EcsPool<Spawn>        _spawnPool;
-		private readonly EcsPool<Unit.NPC>     _npcPool;
+		private readonly EcsFilter             _filter;
+		private readonly EcsPool<Health>       _healthPool;
 		private readonly EcsPool<Unit.Hero>    _heroPool;
 		private readonly EcsPool<Unit.Monster> _monsterPool;
-		private readonly EcsPool<Health>       _healthPool;
-		private readonly EcsPool<Damage>       _damagePool;
-		private readonly EcsPool<Sprite>       _spritePool;
+		private readonly EcsPool<Unit.NPC>     _npcPool;
 		private readonly EcsPool<Position>     _positionPool;
+		private readonly EcsPool<Spawn>        _spawnPool;
+		private readonly EcsPool<Sprite>       _spritePool;
+		private readonly EcsPool<Unit>         _unitPool;
 		private readonly EcsPool<Velocity>     _velocityPool;
 
 		public SpawnSystem(EcsWorld world)
@@ -85,8 +125,8 @@ public class ContextEcsLite : ContextBase
 
 	private class UpdateDataSystem : IEcsRunSystem
 	{
-		private readonly EcsFilter     _filter;
 		private readonly EcsPool<Data> _dataPool;
+		private readonly EcsFilter     _filter;
 
 		public UpdateDataSystem(EcsWorld world)
 		{
@@ -104,11 +144,11 @@ public class ContextEcsLite : ContextBase
 
 	private class UpdateVelocitySystem : IEcsRunSystem
 	{
-		private readonly EcsFilter         _filter;
-		private readonly EcsPool<Velocity> _velocityPool;
-		private readonly EcsPool<Unit>     _unitPool;
 		private readonly EcsPool<Data>     _dataPool;
+		private readonly EcsFilter         _filter;
 		private readonly EcsPool<Position> _positionPool;
+		private readonly EcsPool<Unit>     _unitPool;
+		private readonly EcsPool<Velocity> _velocityPool;
 
 		public UpdateVelocitySystem(EcsWorld world)
 		{
@@ -160,13 +200,13 @@ public class ContextEcsLite : ContextBase
 
 	private class AttackSystem : IEcsRunSystem
 	{
-		private readonly EcsWorld                         _world;
-		private readonly EcsFilter                        _filter;
-		private readonly EcsPool<Unit>                    _unitPool;
-		private readonly EcsPool<Data>                    _dataPool;
-		private readonly EcsPool<Damage>                  _damagePool;
-		private readonly EcsPool<Position>                _positionPool;
 		private readonly EcsPool<Attack<EcsPackedEntity>> _attackPool;
+		private readonly EcsPool<Damage>                  _damagePool;
+		private readonly EcsPool<Data>                    _dataPool;
+		private readonly EcsFilter                        _filter;
+		private readonly EcsPool<Position>                _positionPool;
+		private readonly EcsPool<Unit>                    _unitPool;
+		private readonly EcsWorld                         _world;
 
 		public AttackSystem(EcsWorld world)
 		{
@@ -236,7 +276,7 @@ public class ContextEcsLite : ContextBase
 				{
 					Target = _world.PackEntity(target.Entity),
 					Damage = damage.Attack,
-					Ticks  = Common.AttackTicks(position.V, target.Position)
+					Ticks  = Common.AttackTicks(position.V, target.Position),
 				};
 			}
 		}
@@ -244,12 +284,12 @@ public class ContextEcsLite : ContextBase
 
 	private class DamageSystem : IEcsRunSystem
 	{
-		private readonly EcsWorld                         _world;
 		private readonly EcsFilter                        _attackFilter;
-		private readonly EcsFilter                        _filter;
 		private readonly EcsPool<Attack<EcsPackedEntity>> _attackPool;
-		private readonly EcsPool<Health>                  _healthPool;
 		private readonly EcsPool<Damage>                  _damagePool;
+		private readonly EcsFilter                        _filter;
+		private readonly EcsPool<Health>                  _healthPool;
+		private readonly EcsWorld                         _world;
 
 		public DamageSystem(EcsWorld world)
 		{
@@ -292,11 +332,11 @@ public class ContextEcsLite : ContextBase
 
 	private class KillSystem : IEcsRunSystem
 	{
+		private readonly EcsPool<Data>   _dataPool;
+		private readonly EcsPool<Dead>   _deadPool;
 		private readonly EcsFilter       _filter;
 		private readonly EcsPool<Health> _healthPool;
 		private readonly EcsPool<Unit>   _unitPool;
-		private readonly EcsPool<Data>   _dataPool;
-		private readonly EcsPool<Dead>   _deadPool;
 
 		public KillSystem(EcsWorld world)
 		{
@@ -329,11 +369,11 @@ public class ContextEcsLite : ContextBase
 
 	private class SpriteSystem : IEcsRunSystem
 	{
-		private readonly EcsFilter       _spawnFilter;
 		private readonly EcsFilter       _deadFilter;
-		private readonly EcsFilter       _npcFilter;
 		private readonly EcsFilter       _heroFilter;
 		private readonly EcsFilter       _monsterFilter;
+		private readonly EcsFilter       _npcFilter;
+		private readonly EcsFilter       _spawnFilter;
 		private readonly EcsPool<Sprite> _spritePool;
 
 		public SpriteSystem(EcsWorld world)
@@ -381,12 +421,12 @@ public class ContextEcsLite : ContextBase
 
 	private class RenderSystem : IEcsRunSystem
 	{
-		private readonly Framebuffer       _framebuffer;
+		private readonly EcsPool<Data>     _datas;
 		private readonly EcsFilter         _filter;
+		private readonly Framebuffer       _framebuffer;
 		private readonly EcsPool<Position> _positions;
 		private readonly EcsPool<Sprite>   _sprites;
 		private readonly EcsPool<Unit>     _units;
-		private readonly EcsPool<Data>     _datas;
 
 		public RenderSystem(EcsWorld world, Framebuffer framebuffer)
 		{
@@ -416,9 +456,9 @@ public class ContextEcsLite : ContextBase
 
 	private class RespawnSystem : IEcsRunSystem
 	{
+		private readonly EcsPool<Data>  _dataPool;
 		private readonly EcsFilter      _filter;
 		private readonly EcsPool<Spawn> _spawnPool;
-		private readonly EcsPool<Data>  _dataPool;
 		private readonly EcsPool<Unit>  _unitPool;
 		private readonly EcsWorld       _world;
 
@@ -448,63 +488,12 @@ public class ContextEcsLite : ContextBase
 				_dataPool.Add(newEntity) = data;
 				_unitPool.Add(newEntity) = new Unit
 				{
-					Id   = unit.Id | ((uint) data.Tick << 16),
-					Seed = StableHash32.Hash(unit.Seed, unit.Counter)
+					Id   = unit.Id | (uint) data.Tick << 16,
+					Seed = StableHash32.Hash(unit.Seed, unit.Counter),
 				};
 				_world.DelEntity(entity);
 			}
 		}
-	}
-
-	private EcsWorld?   _world;
-	private EcsSystems? _ecsSystems;
-
-	public ContextEcsLite()
-		: base("EcsLite") {}
-
-	protected override void DoSetup()
-	{
-		var world = _world = new EcsWorld();
-		_ecsSystems = new EcsSystems(world);
-		_ecsSystems.Add(new SpawnSystem(world));
-		_ecsSystems.Add(new RespawnSystem(world));
-		_ecsSystems.Add(new KillSystem(world));
-		_ecsSystems.Add(new RenderSystem(world, Framebuffer));
-		_ecsSystems.Add(new SpriteSystem(world));
-		_ecsSystems.Add(new DamageSystem(world));
-		_ecsSystems.Add(new AttackSystem(world));
-		_ecsSystems.Add(new MovementSystem(world));
-		_ecsSystems.Add(new UpdateVelocitySystem(world));
-		_ecsSystems.Add(new UpdateDataSystem(world));
-		_ecsSystems.Init();
-
-		var spawnPool = world.GetPool<Spawn>();
-		var dataPool  = world.GetPool<Data>();
-		var unitPool  = world.GetPool<Unit>();
-		for (var i = 0; i < EntityCount; ++i)
-		{
-			var entity = world.NewEntity();
-			spawnPool.Add(entity);
-			dataPool.Add(entity);
-			unitPool.Add(entity) = new Unit
-			{
-				Id   = (uint) i,
-				Seed = (uint) i
-			};
-		}
-	}
-
-	protected override void DoRun(int tick)
-	{
-		_ecsSystems?.Run();
-	}
-
-	protected override void DoCleanup()
-	{
-		_ecsSystems?.Destroy();
-		_ecsSystems = null;
-		_world?.Destroy();
-		_world = null;
 	}
 }
 
