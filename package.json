@@ -1,15 +1,26 @@
 {
   "name": "ecs.benchmark.ecslite",
-  "author": "cNoNim",
+  "author":
+  {
+    "name": "cNoNim",
+    "url": "https://github.com/cNoNim"
+  },
   "displayName": "ECS Benchmark EcsLite",
-  "version": "1.0.0",
   "description": "ECS Benchmark EcsLite",
+  "unity": "2020.3",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cNoNim/ecs-benchmark-ecslite.git"
+  },
   "dependencies": {
     "ecs.benchmark.core": "1.0.0",
     "com.leopotam.ecslite": "2024.5.22"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cNoNim/ecs-benchmark-ecslite.git"
-  }
+  "keywords":
+  [
+    "ecs",
+    "benchmark",
+    "ecslite"
+  ]
 }
