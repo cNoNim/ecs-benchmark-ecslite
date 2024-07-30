@@ -5,18 +5,15 @@
     "name": "cNoNim",
     "url": "https://github.com/cNoNim"
   },
-  "displayName": "ECS Benchmark EcsLite",
-  "description": "ECS Benchmark EcsLite",
+  "displayName": "ECS Benchmark Ecs Lite",
+  "description": "ECS Benchmark Ecs Lite",
   "unity": "2020.3",
   "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/cNoNim/ecs-benchmark-ecslite.git"
   },
-  "dependencies": {
-    "ecs.benchmark.core": "1.0.0",
-    "com.leopotam.ecslite": "2024.5.22"
-  },
+  "dependencies": {},
   "keywords":
   [
     "ecs",
