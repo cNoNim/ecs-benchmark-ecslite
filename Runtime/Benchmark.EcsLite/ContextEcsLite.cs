@@ -15,7 +15,7 @@ public class ContextEcsLite : ContextBase
 	private EcsWorld?   _world;
 
 	public ContextEcsLite()
-		: base("EcsLite") {}
+		: base("Ecs Lite") {}
 
 	protected override void DoSetup()
 	{
