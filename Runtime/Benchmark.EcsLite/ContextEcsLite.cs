@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using Benchmark.Core;
+using Benchmark.Core.Algorithms;
 using Benchmark.Core.Components;
 using Benchmark.Core.Hash;
 using Benchmark.Core.Random;
@@ -227,21 +228,19 @@ public class ContextEcsLite : ContextBase
 
 		public void Run(IEcsSystems _)
 		{
-			var count   = _filter.GetEntitiesCount();
-			var keys    = ArrayPool<uint>.Shared.Rent(count);
-			var targets = ArrayPool<Target<int>>.Shared.Rent(count);
+			var count       = _filter.GetEntitiesCount();
+			var keys        = ArrayPool<uint>.Shared.Rent(count);
+			var indirection = ArrayPool<int>.Shared.Rent(count);
+			var targets     = ArrayPool<Target<int>>.Shared.Rent(count);
 			FillTargets(keys, targets);
-			Array.Sort(
-				keys,
-				targets,
-				0,
-				count);
-			CreateAttacks(targets, count);
+			RadixSort.SortWithIndirection(keys, indirection, count);
 			ArrayPool<uint>.Shared.Return(keys);
+			CreateAttacks(indirection, targets.AsSpan(0, count));
+			ArrayPool<int>.Shared.Return(indirection);
 			ArrayPool<Target<int>>.Shared.Return(targets);
 		}
 
-		private void FillTargets(uint[] keys, Target<int>[] targets)
+		private void FillTargets(Span<uint> keys, Span<Target<int>> targets)
 		{
 			var i = 0;
 			foreach (var entity in _filter)
@@ -253,8 +252,9 @@ public class ContextEcsLite : ContextBase
 			}
 		}
 
-		private void CreateAttacks(Target<int>[] targets, int count)
+		private void CreateAttacks(ReadOnlySpan<int> indirection, ReadOnlySpan<Target<int>> targets)
 		{
+			var count = targets.Length;
 			foreach (var entity in _filter)
 			{
 				ref readonly var damage = ref _damagePool.Get(entity);
@@ -270,7 +270,7 @@ public class ContextEcsLite : ContextBase
 				ref readonly var position     = ref _positionPool.Get(entity);
 				var              generator    = new RandomGenerator(unit.Seed);
 				var              index        = generator.Random(ref unit.Counter, count);
-				var              target       = targets[index];
+				var              target       = targets[indirection[index]];
 				var              attackEntity = _world.NewEntity();
 				_attackPool.Add(attackEntity) = new Attack<EcsPackedEntity>
 				{
