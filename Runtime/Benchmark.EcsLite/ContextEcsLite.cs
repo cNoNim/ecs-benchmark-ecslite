@@ -20,7 +20,17 @@ public class ContextEcsLite : ContextBase
 
 	protected override void DoSetup()
 	{
-		var world = _world = new EcsWorld();
+		var world = _world = new EcsWorld(
+			new EcsWorld.Config
+			{
+				Entities             = EntityCount,
+				RecycledEntities     = EntityCount / 2,
+				Pools                = 16,
+				Filters              = 16,
+				PoolDenseSize        = EntityCount,
+				PoolRecycledSize     = EntityCount / 2,
+				EntityComponentsSize = 16,
+			});
 		_ecsSystems = new EcsSystems(world);
 		_ecsSystems.Add(new SpawnSystem(world));
 		_ecsSystems.Add(new RespawnSystem(world));
