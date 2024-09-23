@@ -323,19 +323,14 @@ public class ContextEcsLite : ContextBase
 				if (attack.Ticks-- > 0)
 					continue;
 
-				var target       = attack.Target;
-				var attackDamage = attack.Damage;
-
+				if (attack.Target.Unpack(_world, out var targetEntity)
+				 && _filter.HasEntity(targetEntity))
+				{
+					ref var          health = ref _healthPool.Get(targetEntity);
+					ref readonly var damage = ref _damagePool.Get(targetEntity);
+					ApplyDamageSequential(ref health, in damage, in attack);
+				}
 				_world.DelEntity(entity);
-
-				if (!target.Unpack(_world, out var targetEntity)
-				 || !_filter.HasEntity(targetEntity))
-					continue;
-
-				ref var          health      = ref _healthPool.Get(targetEntity);
-				ref readonly var damage      = ref _damagePool.Get(targetEntity);
-				var              totalDamage = attackDamage - damage.Defence;
-				health.Hp -= totalDamage;
 			}
 		}
 	}
